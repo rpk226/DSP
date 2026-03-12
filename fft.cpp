@@ -1,17 +1,25 @@
 #include "fft.h"
+#include <complex>
+#include <vector>
 #include <cmath>
 
 using namespace std;
 
-vector<complex<double>> FFT(int dataSymbols[], int N)
+std::vector<std::complex<double>> FFT(
+    int dataSymbols[], int N,
+    bool inverse
+)
 {
+
     vector<complex<double>> ofdmSymbol(N);
 
-    for(int k = 0; k < N; k++) {
+    double sign = inverse ? 1.0 : -1.0;
+
+    for (int k = 0; k < N; k++) {
         ofdmSymbol[k] = 0;
-        for(int n = 0; n < N; n++) {
+        for (int n = 0; n < N; n++) {
             ofdmSymbol[k] += static_cast<double>(dataSymbols[n]) *
-                exp(complex<double>(0, -2.0 * M_PI * k * n / N));
+                exp(complex<double>(0, sign * 2.0 * M_PI * k * n / N));
         }
         ofdmSymbol[k] /= sqrt(N);
     }

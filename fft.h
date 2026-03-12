@@ -4,6 +4,10 @@
 #include <vector>
 #include <complex>
 
-std::vector<std::complex<double>> FFT(int dataSymbols[], int N);
+std::vector<std::complex<double>> FFT(
+    int dataSymbols[], int N,
+    bool inverse = false
+);
+
 
 #endif

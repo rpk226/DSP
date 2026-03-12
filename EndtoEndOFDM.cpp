@@ -1,4 +1,7 @@
-#include<iostream>
+#include <iostream>
+#include <vector>
+#include <complex>
+#include <cstdlib>
 #include "fft.h"
 
 using namespace std;
@@ -17,9 +20,9 @@ int main()
         cout << "Data Symbol " << i << ": " << dataSymbols[i] << endl;
     }
     
-
+ 
    // Perform IFFT to generate OFDM symbol
-   complex<double> ofdmSymbol[N];
+   /*complex<double> ofdmSymbol[N];
    for(int k = 0; k < N; k++) {
         ofdmSymbol[k] = 0;
         for(int n = 0; n < N; n++) {
@@ -29,7 +32,8 @@ int main()
         }
         ofdmSymbol[k] /= sqrt(N); // Normalize the OFDM symbol
     }
-     
+    */
+    vector<complex<double>> ofdmSymbol = FFT(dataSymbols, N,true);//IFFT
 
     // Output the generated OFDM symbol
 
@@ -51,7 +55,7 @@ int main()
 
     //consider L channel taps  
     int L = 3; // Number of channel taps
-    complex<double> channel[L];
+    vector<complex<double>> channel(N, complex<double>(0.0, 0.0));
     // h[n]= \detlta(n) + 0.5\delta(n-1) + 0.25\delta(n-2)
     channel[0] = 1;
     channel[1] = 0.5;
@@ -102,6 +106,9 @@ int main()
                 exp(complex<double>(0, 2.0 * M_PI * k * n / N));
         }
     }
+    
+
+    //vector<complex<double>> channelFrequencyResponse = FFT(channel, N,false);
     
     // Equalize the received symbols by dividing by the channel frequency response
     for(int n = 0; n < N; n++) {
