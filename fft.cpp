@@ -1,4 +1,4 @@
-#include "fft.h"
+#include "function.h"
 #include <complex>
 #include <vector>
 #include <cmath>
@@ -6,7 +6,7 @@
 using namespace std;
 
 std::vector<std::complex<double>> FFT(
-    int dataSymbols[], int N,
+    std::complex<double> dataSymbols[], int N,
     bool inverse
 )
 {
@@ -18,7 +18,7 @@ std::vector<std::complex<double>> FFT(
     for (int k = 0; k < N; k++) {
         ofdmSymbol[k] = 0;
         for (int n = 0; n < N; n++) {
-            ofdmSymbol[k] += static_cast<double>(dataSymbols[n]) *
+            ofdmSymbol[k] += dataSymbols[n] *
                 exp(complex<double>(0, sign * 2.0 * M_PI * k * n / N));
         }
         ofdmSymbol[k] /= sqrt(N);

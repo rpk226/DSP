@@ -2,7 +2,8 @@
 #include <vector>
 #include <complex>
 #include <cstdlib>
-#include "fft.h"
+#include <ctime>
+#include "function.h"
 
 using namespace std;
 
@@ -10,33 +11,25 @@ int main()
 {
     int N = 8; // Number of subcarriers
     int M = 4; // Modulation order (e.g., QPSK)
-    
+    srand((unsigned int)time(NULL));
     // Generate random data symbols
-    int dataSymbols[N];
+    complex<double> dataSymbols[N];
     for(int i = 0; i < N; i++) {
         dataSymbols[i] = rand() % M; // Random symbol from 0 to M-1
     }
     for(int i = 0; i < N; i++) {
         cout << "Data Symbol " << i << ": " << dataSymbols[i] << endl;
     }
-    
- 
-   // Perform IFFT to generate OFDM symbol
-   /*complex<double> ofdmSymbol[N];
-   for(int k = 0; k < N; k++) {
-        ofdmSymbol[k] = 0;
-        for(int n = 0; n < N; n++) {
-            ofdmSymbol[k] += static_cast<double>(dataSymbols[n]) *
-                 exp(complex<double>(0, -2.0 * M_PI * k * n / N));
-
-        }
-        ofdmSymbol[k] /= sqrt(N); // Normalize the OFDM symbol
+    // Modulation of data symbols (e.g., QPSK)
+    /*complex<double> modulatedSymbols[N];
+    for(int i = 0; i < N; i++) {
+      modulatedSymbols[i] = polar(1.0, 2.0 * M_PI * dataSymbols[i] / M); // Map symbols to constellation points
     }
     */
+
     vector<complex<double>> ofdmSymbol = FFT(dataSymbols, N,true);//IFFT
 
     // Output the generated OFDM symbol
-
 
     // Add cyclic prefix (CP) to the OFDM symbol
     int cpLength = 4; // Length of cyclic prefix
@@ -50,12 +43,11 @@ int main()
 
 
     // DAC and upconversion to RF for transmission are omitted for simplicity
-
     // At the receiver: downconversion, ADC, are ommitted for simplicity
 
     //consider L channel taps  
     int L = 3; // Number of channel taps
-    vector<complex<double>> channel(N, complex<double>(0.0, 0.0));
+    complex<double> channel[N]={};
     // h[n]= \detlta(n) + 0.5\delta(n-1) + 0.25\delta(n-2)
     channel[0] = 1;
     channel[1] = 0.5;
@@ -87,28 +79,13 @@ int main()
 
     
     //Perform FFT to recover the transmitted symbols
-    complex<double> recoveredSymbols[N];
-    for(int n = 0; n < N; n++) {
-        recoveredSymbols[n] = 0;
-        for(int k = 0; k < N; k++) {
-            recoveredSymbols[n] += receivedSignalWithoutCP[k] *
-                exp(complex<double>(0, 2.0 * M_PI * k * n / N));
-        }
-        recoveredSymbols[n] /= sqrt(N); // Normalize the recovered symbols
-    }
-    
-    // FFT of the channel response to equalize the channel effect
-    complex<double> channelFrequencyResponse[N];
-    for(int k = 0; k < N; k++) {
-        channelFrequencyResponse[k] = 0;
-        for(int n = 0; n < L; n++) {
-            channelFrequencyResponse[k] += channel[n] *
-                exp(complex<double>(0, 2.0 * M_PI * k * n / N));
-        }
-    }
-    
+    vector<complex<double>> recoveredSymbols = FFT(receivedSignalWithoutCP, N,false);//FFT
 
-    //vector<complex<double>> channelFrequencyResponse = FFT(channel, N,false);
+    // FFT of the channel response to equalize the channel effect
+    vector<complex<double>> channelFrequencyResponse = FFT(channel, N,false);//FFT
+    for(int n = 0; n < N; n++) {
+        channelFrequencyResponse[n] *= sqrt(N); // Scale the channel frequency response by sqrt(N) to match the scaling of the FFT
+    }
     
     // Equalize the received symbols by dividing by the channel frequency response
     for(int n = 0; n < N; n++) {
