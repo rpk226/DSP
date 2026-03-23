@@ -6,14 +6,18 @@ At Transmitter
 1. Data symbol generation
 2. Perform IFFT
 3. Add CP
+
 At channel:
 1.Has N channel taps 
+
 At Recevier:
 1.Channel noise is added
 2.Remove CP
 3.Perform FFT
 4. Hard Decoding and demodulation
-![alt text](Functional Block of OFDM TX and RX.png)
+
+![alt text](https://github.com/rpk226/DSP/blob/06a8376c0e91350565eac360340575ea53fa4d1c/Functional%20Block%20of%20OFDM%20TX%20and%20RX.png)
+
 Function: 
 fft.cpp- genertes the output of complex fft operation when the N- no of subcariers is an multiple of 2 else DFT is performance
 complexGaussian.cpp- generate the complex number with mean and Variance.
