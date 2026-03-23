@@ -9,4 +9,6 @@ std::vector<std::complex<double>> FFT(
     bool inverse
 );
 
+std::complex<double> complexGaussian(double mean, double variance);
+
 #endif

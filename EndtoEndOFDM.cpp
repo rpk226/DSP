@@ -3,31 +3,40 @@
 #include <complex>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
+#include <iomanip>
 #include "function.h"
 
 using namespace std;
 
-int main()
+double runSimulation(double noisePower)
 {
-    int N = 8; // Number of subcarriers
+    int N = 1024; // Number of subcarriers
     int M = 4; // Modulation order (e.g., QPSK)
-    srand((unsigned int)time(NULL));
     // Generate random data symbols
     complex<double> dataSymbols[N];
     for(int i = 0; i < N; i++) {
         dataSymbols[i] = rand() % M; // Random symbol from 0 to M-1
     }
-    for(int i = 0; i < N; i++) {
-        cout << "Data Symbol " << i << ": " << dataSymbols[i] << endl;
-    }
-    // Modulation of data symbols (e.g., QPSK)
-    /*complex<double> modulatedSymbols[N];
-    for(int i = 0; i < N; i++) {
-      modulatedSymbols[i] = polar(1.0, 2.0 * M_PI * dataSymbols[i] / M); // Map symbols to constellation points
-    }
-    */
 
-    vector<complex<double>> ofdmSymbol = FFT(dataSymbols, N,true);//IFFT
+    //Modulation of data symbols (e.g., QAM)
+    complex<double> modulatedSymbols[N];
+
+    for(int i = 0; i < N; i++) {
+        switch((int)dataSymbols[i].real()) {
+            case 0: modulatedSymbols[i] = complex<double>(1, 1); break;
+            case 1: modulatedSymbols[i] = complex<double>(-1, 1); break;
+            case 2: modulatedSymbols[i] = complex<double>(-1, -1); break;
+            case 3: modulatedSymbols[i] = complex<double>(1, -1); break;
+        }
+        modulatedSymbols[i] /= sqrt(2.0); // normalization
+    }
+
+    /*for(int i = 0; i < N; i++) {
+        cout << "Data /modulated Symbol " << i << ": " << dataSymbols[i] <<":" << modulatedSymbols[i] << endl;
+    }*/
+
+    vector<complex<double>> ofdmSymbol = FFT(modulatedSymbols, N,true);//IFFT
 
     // Output the generated OFDM symbol
 
@@ -53,22 +62,23 @@ int main()
     channel[1] = 0.5;
     channel[2] = 0.25;
 
+    for(int i = 0; i < N; i++) {
+        channel[i]= channel[i]* complexGaussian(0, 1); // Add noise to the channel taps
+    }
+
     // Recevied signal after passing through the channel (convolution with the channel impulse response)
     // This follows the assumption that the lenght of received signal> number of channel taps
     complex<double> receivedSignal[N + cpLength+L-1];
+    
     for(int i = 0; i < N + cpLength ; i++) {
         receivedSignal[i] = 0;
         for(int j = 0; j < L; j++) 
             if (i - j >= 0) {
                 receivedSignal[i] += ofdmSymbolWithCP[i - j] * channel[j];
             }
+        receivedSignal[i] += complexGaussian(0, noisePower); // Add noise to the received signal
         }
     
-
-    /*cout << "Generated OFDM Symbol with CP:" << endl;
-    for(int i = 0; i < N+cpLength-1; i++) {
-        cout << i<<" :" << receivedSignal[i] << endl;
-    }*/
     // Removing CP  
     complex<double> receivedSignalWithoutCP[N];
 
@@ -96,12 +106,61 @@ int main()
         }
     }
 
-    cout << "Generated OFDM Symbol with CP:" << endl;
-    for(int i = 0; i < N; i++) {
-        cout << i<<" :" << recoveredSymbols[i] << endl;
-    }
-    // demoduation to retrieve the original data symbols
+    //detection and demodulation of the recovered symbols
+    vector<int> detectedSymbols(N);
 
-     return 0;
+    for(int i = 0; i < N; i++) {
+
+        int b1 = real(recoveredSymbols[i]) > 0 ? 0 : 1;
+        int b2 = imag(recoveredSymbols[i]) > 0 ? 0 : 1;
+
+        if (b1 == 0 && b2 == 0) detectedSymbols[i] = 0; // 00
+        else if (b1 == 1 && b2 == 0) detectedSymbols[i] = 1; // 01
+        else if (b1 == 1 && b2 == 1) detectedSymbols[i] = 2; // 11
+        else if (b1 == 0 && b2 == 1) detectedSymbols[i] = 3; // 10
+    }
+    /*cout << "Generated OFDM Symbol with CP:" << endl;
+    for(int i = 0; i < N; i++) {
+        cout << i<<" :" << recoveredSymbols[i] <<":" << detectedSymbols[i] << endl;
+    }
+
+    */
+
+
+    // Compare the detected symbols with the original data symbols to calculate the symbol error rate (SER)
+    int errorCount = 0;
+    for(int i = 0; i < N; i++) {
+        if (detectedSymbols[i] != (int)dataSymbols[i].real()) {
+            errorCount++;
+        }
+    }
+    double symbolErrorRate = (double)errorCount / N;
+    return symbolErrorRate;
+}
+
+int main()
+{
+    srand((unsigned int)time(NULL));
+
+    vector<double> snrDbValues = {1.0, 2.0, 3.0, 5.0};
+    int trialsPerSNR = 100;
+    double signalPower = 1.0; // QPSK symbols are normalized to unit average power
+
+    cout << "snr_db,average_ser" << endl;
+    cout << fixed << setprecision(6);
+
+    for (double snrDb : snrDbValues) {
+        double snrLinear = pow(10.0, snrDb / 10.0);
+        double noisePower = signalPower / snrLinear;
+        double totalSER = 0.0;
+
+        for (int trial = 0; trial < trialsPerSNR; ++trial) {
+            totalSER += runSimulation(noisePower);
+        }
+
+        cout << snrDb << "," << (totalSER / trialsPerSNR) << endl;
+    }
+
+    return 0;
 
 }
