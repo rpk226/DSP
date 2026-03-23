@@ -13,7 +13,7 @@ At Recevier:
 2.Remove CP
 3.Perform FFT
 4. Hard Decoding and demodulation
-
+![alt text](Functional Block of OFDM TX and RX.png)
 Function: 
 fft.cpp- genertes the output of complex fft operation when the N- no of subcariers is an multiple of 2 else DFT is performance
 complexGaussian.cpp- generate the complex number with mean and Variance.
