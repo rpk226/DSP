@@ -142,7 +142,7 @@ int main()
 {
     srand((unsigned int)time(NULL));
 
-    vector<double> snrDbValues = {1.0, 2.0, 3.0, 5.0};
+    vector<double> snrDbValues = {0,4,8,12,16,20}; // SNR values in dB
     int trialsPerSNR = 100;
     double signalPower = 1.0; // QPSK symbols are normalized to unit average power
 

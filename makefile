@@ -11,7 +11,7 @@ TARGET = EndtoEndOFDM
 TARGET_DEL = EndtoEndOFDM.exe
 
 # Source files
-SRCS = EndtoEndOFDM.cpp fft.cpp
+SRCS = EndtoEndOFDM.cpp fft.cpp complexGaussian.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)
@@ -29,8 +29,8 @@ $(TARGET): $(OBJS)
 
 # Rule to run the executable
 run: $(TARGET)
-	$(TARGET)
+	./$(TARGET)
 
 # Clean rule to remove generated files
 clean:
-	del $(TARGET_DEL) $(OBJS)
+	rm -f $(TARGET) $(TARGET_DEL) $(OBJS)
