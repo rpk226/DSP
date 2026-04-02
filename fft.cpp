@@ -78,7 +78,13 @@ std::vector<std::complex<double>> FFT(
         }
     }
 
-    double scale = 1.0 / sqrt(N);
+
+    double scale=1/sqrt(N);
+    /*if (inverse==false) {
+        scale = 1.0; // No scaling for FFT
+    }*/
+
+
     for (auto& value : output) {
         value *= scale;
     }

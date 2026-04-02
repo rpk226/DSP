@@ -9,7 +9,7 @@
 
 using namespace std;
 
-double runSimulation(double noisePower)
+std::pair<double, double> runSimulation(double noisePower)
 {
     int N = 1024; // Number of subcarriers
     int M = 4; // Modulation order (e.g., QPSK)
@@ -21,13 +21,18 @@ double runSimulation(double noisePower)
 
     //Modulation of data symbols (e.g., QAM)
     complex<double> modulatedSymbols[N];
+    double databits1[N],databits2[N];
 
     for(int i = 0; i < N; i++) {
         switch((int)dataSymbols[i].real()) {
-            case 0: modulatedSymbols[i] = complex<double>(1, 1); break;
-            case 1: modulatedSymbols[i] = complex<double>(-1, 1); break;
-            case 2: modulatedSymbols[i] = complex<double>(-1, -1); break;
-            case 3: modulatedSymbols[i] = complex<double>(1, -1); break;
+            case 0: modulatedSymbols[i] = complex<double>(1, 1);
+                    databits1[i] = 0; databits2[i] = 0; break;
+            case 1: modulatedSymbols[i] = complex<double>(-1, 1);
+                    databits1[i] = 1; databits2[i] = 0; break;
+            case 2: modulatedSymbols[i] = complex<double>(-1, -1);
+                    databits1[i] = 1; databits2[i] = 1; break;
+            case 3: modulatedSymbols[i] = complex<double>(1, -1);
+                    databits1[i] = 0; databits2[i] = 1; break;
         }
         modulatedSymbols[i] /= sqrt(2.0); // normalization
     }
@@ -57,13 +62,15 @@ double runSimulation(double noisePower)
     //consider L channel taps  
     int L = 3; // Number of channel taps
     complex<double> channel[N]={};
+    //Impulse response of the channel (e.g., multipath fading channel)
     // h[n]= \detlta(n) + 0.5\delta(n-1) + 0.25\delta(n-2)
-    channel[0] = 1;
-    channel[1] = 0.5;
-    channel[2] = 0.25;
+    channel[0] = 5;
+    channel[1] = 3;
+    channel[2] = 4;
 
     for(int i = 0; i < N; i++) {
         channel[i]= channel[i]* complexGaussian(0, 1); // Add noise to the channel taps
+        
     }
 
     // Recevied signal after passing through the channel (convolution with the channel impulse response)
@@ -76,7 +83,7 @@ double runSimulation(double noisePower)
             if (i - j >= 0) {
                 receivedSignal[i] += ofdmSymbolWithCP[i - j] * channel[j];
             }
-        receivedSignal[i] += complexGaussian(0, noisePower); // Add noise to the received signal
+        //receivedSignal[i] += complexGaussian(0, noisePower); // Add noise to the received signal
         }
     
     // Removing CP  
@@ -86,29 +93,24 @@ double runSimulation(double noisePower)
         receivedSignalWithoutCP[i] = receivedSignal[i + cpLength];
     }
 
-
-    
     //Perform FFT to recover the transmitted symbols
     vector<complex<double>> recoveredSymbols = FFT(receivedSignalWithoutCP, N,false);//FFT
-
+    for(int i = 0; i < N; i++) {
+        recoveredSymbols[i] += complexGaussian(0, noisePower); // Add noise to the recovered symbols
+    }
     // FFT of the channel response to equalize the channel effect
     vector<complex<double>> channelFrequencyResponse = FFT(channel, N,false);//FFT
-    for(int n = 0; n < N; n++) {
-        channelFrequencyResponse[n] *= sqrt(N); // Scale the channel frequency response by sqrt(N) to match the scaling of the FFT
-    }
-    
+
     // Equalize the received symbols by dividing by the channel frequency response
     for(int n = 0; n < N; n++) {
-        if (abs(channelFrequencyResponse[n]) > 1e-6) { // Avoid division by zero
-            recoveredSymbols[n] /= channelFrequencyResponse[n];
-        } else {
-            recoveredSymbols[n] = 0; // If the channel response is too weak, set the recovered symbol to zero
-        }
-    }
+            recoveredSymbols[n] *= conj(channelFrequencyResponse[n]);
+            recoveredSymbols[n] /= norm(channelFrequencyResponse[n]);}
+    
 
     //detection and demodulation of the recovered symbols
     vector<int> detectedSymbols(N);
-
+    int errorCount = 0;
+    int berCount = 0;
     for(int i = 0; i < N; i++) {
 
         int b1 = real(recoveredSymbols[i]) > 0 ? 0 : 1;
@@ -118,47 +120,51 @@ double runSimulation(double noisePower)
         else if (b1 == 1 && b2 == 0) detectedSymbols[i] = 1; // 01
         else if (b1 == 1 && b2 == 1) detectedSymbols[i] = 2; // 11
         else if (b1 == 0 && b2 == 1) detectedSymbols[i] = 3; // 10
-    }
-    /*cout << "Generated OFDM Symbol with CP:" << endl;
-    for(int i = 0; i < N; i++) {
-        cout << i<<" :" << recoveredSymbols[i] <<":" << detectedSymbols[i] << endl;
-    }
-
-    */
-
-
-    // Compare the detected symbols with the original data symbols to calculate the symbol error rate (SER)
-    int errorCount = 0;
-    for(int i = 0; i < N; i++) {
+  
         if (detectedSymbols[i] != (int)dataSymbols[i].real()) {
             errorCount++;
         }
+        if (b1 != databits1[i]) {
+            berCount++;
+        }
+        if (b2 != databits2[i]) {
+            berCount++; 
+        }
+
     }
+
+
     double symbolErrorRate = (double)errorCount / N;
-    return symbolErrorRate;
+    double bitErrorRate = (double)berCount / (N * 2); // Assuming 2 bits per symbol
+    return std::make_pair(symbolErrorRate, bitErrorRate);
 }
 
 int main()
 {
     srand((unsigned int)time(NULL));
 
-    vector<double> snrDbValues = {0,4,8,12,16,20}; // SNR values in dB
-    int trialsPerSNR = 100;
+    vector<double> snrDbValues ={-10,-5,0,5,10,15,20,25,30,35}; // SNR values in dB
+    //vector<double> snrDbValues ={-10};
+    int trialsPerSNR = 200;
     double signalPower = 1.0; // QPSK symbols are normalized to unit average power
 
-    cout << "snr_db,average_ser" << endl;
+    cout << "snr_db,average_ser,average_ber" << endl;
     cout << fixed << setprecision(6);
 
     for (double snrDb : snrDbValues) {
         double snrLinear = pow(10.0, snrDb / 10.0);
         double noisePower = signalPower / snrLinear;
         double totalSER = 0.0;
+        double totalBER = 0.0;
 
         for (int trial = 0; trial < trialsPerSNR; ++trial) {
-            totalSER += runSimulation(noisePower);
+            double ser, ber;
+            tie(ser, ber) = runSimulation(noisePower);
+            totalSER += ser;
+            totalBER += ber;
         }
 
-        cout << snrDb << "," << (totalSER / trialsPerSNR) << endl;
+        cout << snrDb << "," << (totalSER / trialsPerSNR) << "," << (totalBER / trialsPerSNR) << endl;
     }
 
     return 0;
