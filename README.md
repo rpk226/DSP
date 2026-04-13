@@ -19,8 +19,8 @@ At Recevier:
 ![alt text](https://github.com/rpk226/DSP/blob/06a8376c0e91350565eac360340575ea53fa4d1c/Functional%20Block%20of%20OFDM%20TX%20and%20RX.png)
 ## Components
 
-### `fft.cpp`
-- Implements the **Fast Fourier Transform (FFT)** for complex inputs.
+### `fft_fp.cpp`
+- Implements the Fixed-point implementation **Fast Fourier Transform (FFT)** for complex inputs.
 - Automatically switches to the **Discrete Fourier Transform (DFT)** when the number of subcarriers `N` is not a power of 2.
 
 ### `complexGaussian.cpp`
@@ -30,12 +30,14 @@ At Recevier:
 
 ### `Plots.ipynb`
 - Jupyter Notebook used for visualization.
-- Plots **Symbol Error Rate (SER)** versus **Signal-to-Noise Ratio (SNR)**.
+- Plots **Symbol Error Rate (SER)** and **Bit Error Rate (BER)** versus **Signal-to-Noise Ratio (SNR)**.
+- Plots the simulated expression from fixed point implementation and analytical expression. 
 
 ### `Ser_vs_noise.csv`
 - Stores the simulated values of:
   - **SNR**
   - **SER**
+  - **BER**
 - Used for plotting and performance analysis.
 
 ## Build Instructions
